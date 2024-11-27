@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"net/http"
 
+	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
 	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 	protosigstore "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
 	"github.com/sigstore/protobuf-specs/gen/pb-go/dsse"
@@ -14,11 +17,6 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
-
-type Verifier struct {
-	PyPI     *Client
-	SigStore *verify.SignedEntityVerifier
-}
 
 func NewVerifier(pypi *Client) (*Verifier, error) {
 	trustedRoot, err := root.FetchTrustedRootWithOptions(
@@ -43,38 +41,69 @@ func NewVerifier(pypi *Client) (*Verifier, error) {
 	}, nil
 }
 
-func (v *Verifier) Verify(ctx context.Context, project *Project, version string) error {
+type Verifier struct {
+	PyPI     *Client
+	SigStore *verify.SignedEntityVerifier
+}
+
+type VerificationStatus struct {
+	URL            string
+	SHA256         string
+	HasAttestation bool
+	Attestation    *verify.VerificationResult
+	Error          error
+}
+
+func (v *Verifier) Verify(ctx context.Context, project *Project, version string) ([]*VerificationStatus, error) {
 	releases, ok := project.Releases[version]
 	if !ok {
-		return fmt.Errorf("No releases for version %q of project %q", version, project.Info.Name)
+		return nil, fmt.Errorf("No releases for version %q of project %q", version, project.Info.Name)
 	}
 
-	for _, release := range releases {
+	statuses := make([]*VerificationStatus, len(releases))
+
+	for index, release := range releases {
+		statuses[index] = &VerificationStatus{
+			URL:    release.URL,
+			SHA256: release.Digests.Sha256,
+		}
+
 		provenance, err := v.PyPI.GetProvenance(ctx, project.Info.Name, version, release.Filename)
 		if err != nil {
-			return err
+			var httperr *httputil.HTTPStatusError
+			if errors.As(err, &httperr) && httperr.StatusCode == http.StatusNotFound {
+				continue
+			}
+
+			statuses[index].Error = err
+
+			continue
 		}
+
+		statuses[index].HasAttestation = true
 
 		digest, err := hex.DecodeString(release.Digests.Sha256)
 		if err != nil {
-			return fmt.Errorf("decoding hex encoded release's sha256 digest: %w", err)
+			statuses[index].Error = fmt.Errorf("decoding hex encoded release's sha256 digest: %w", err)
+
+			continue
 		}
 
 		for _, bundles := range provenance.AttestationBundles {
 			for _, attestation := range bundles.Attestations {
 				bundle, err := transcribeBundle(attestation)
 				if err != nil {
-					return err
+					statuses[index].Error = err
+
+					continue
 				}
 
-				if err := v.verifyBundle(bundle, digest); err != nil {
-					return err
-				}
+				statuses[index].Attestation, statuses[index].Error = v.verifyBundle(bundle, digest)
 			}
 		}
 	}
 
-	return nil
+	return statuses, nil
 }
 
 func transcribeBundle(attestation Attestation) (*bundle.Bundle, error) {
@@ -112,16 +141,17 @@ func transcribeBundle(attestation Attestation) (*bundle.Bundle, error) {
 	}}, nil
 }
 
-func (v *Verifier) verifyBundle(bundle *bundle.Bundle, digest []byte) error {
-	if _, err := v.SigStore.Verify(
+func (v *Verifier) verifyBundle(bundle *bundle.Bundle, digest []byte) (*verify.VerificationResult, error) {
+	result, err := v.SigStore.Verify(
 		bundle,
 		verify.NewPolicy(
 			verify.WithArtifactDigest("sha256", digest),
 			verify.WithoutIdentitiesUnsafe(), // TODO: check specific cert identities
 		),
-	); err != nil {
-		return fmt.Errorf("verifying a bundle: %w", err)
+	)
+	if err != nil {
+		return nil, fmt.Errorf("verifying a bundle: %w", err)
 	}
 
-	return nil
+	return result, nil
 }

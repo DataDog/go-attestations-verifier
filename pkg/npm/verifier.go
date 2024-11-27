@@ -5,10 +5,13 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/tuf"
@@ -51,68 +54,89 @@ type Verifier struct {
 	NPMPublicKey *verify.SignedEntityVerifier
 }
 
-func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) error {
-	attestations, err := v.NPM.GetAttestations(ctx, pkg.Name, pkg.Version)
-	if err != nil {
-		return err
+type VerificationStatus struct {
+	URL              string
+	SHA512           string
+	HasAttestations  bool
+	Attestation      *verify.VerificationResult
+	AttestationError error
+	Provenance       *verify.VerificationResult
+	ProvenanceError  error
+}
+
+func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*VerificationStatus, error) {
+	status := &VerificationStatus{
+		URL: pkg.Dist.Tarball,
 	}
 
 	encodedDigest, ok := strings.CutPrefix(pkg.Dist.Integrity, "sha512-")
 	if !ok {
-		return fmt.Errorf("sha512 digest not found for package's version")
+		return nil, fmt.Errorf("sha512 digest not found for package's version")
 	}
+
+	status.SHA512 = encodedDigest
 
 	digest, err := base64.StdEncoding.DecodeString(encodedDigest)
 	if err != nil {
-		return fmt.Errorf("decoding base64 encoded package's version sha512: %w", err)
+		return nil, fmt.Errorf("decoding base64 encoded package's version sha512: %w", err)
 	}
+
+	attestations, err := v.NPM.GetAttestations(ctx, pkg.Name, pkg.Version)
+	if err != nil {
+		var httperr *httputil.HTTPStatusError
+		if errors.As(err, &httperr) && httperr.StatusCode == http.StatusNotFound {
+			return status, nil
+		}
+
+		return nil, err
+	}
+
+	status.HasAttestations = true
 
 	for _, attestation := range attestations {
 		if attestation.PredicateType == "https://github.com/npm/attestation/tree/main/specs/publish/v0.1" {
-			if err := v.verifyAttestation(attestation.Bundle, digest); err != nil {
-				return err
-			}
+			status.Attestation, status.ProvenanceError = v.verifyAttestation(attestation.Bundle, digest)
 		}
 
 		if attestation.PredicateType == "https://slsa.dev/provenance/v1" {
-			if err := v.verifyProvenance(attestation.Bundle, digest); err != nil {
-				return err
-			}
+			status.Provenance, status.ProvenanceError = v.verifyProvenance(attestation.Bundle, digest)
 		}
 	}
 
-	return nil
+	return status, nil
 }
 
 // Verification logic taken from:
 // https://github.com/sigstore/sigstore-go/blob/main/docs/verification.md
-func (v *Verifier) verifyAttestation(bundle *bundle.Bundle, digest []byte) error {
-	if _, err := v.NPMPublicKey.Verify(
+func (v *Verifier) verifyAttestation(bundle *bundle.Bundle, digest []byte) (*verify.VerificationResult, error) {
+	result, err := v.NPMPublicKey.Verify(
 		bundle,
 		verify.NewPolicy(
 			verify.WithArtifactDigest("sha512", digest),
 			verify.WithKey(),
 		),
-	); err != nil {
-		return fmt.Errorf("verifying a bundle: %w", err)
+	)
+	if err != nil {
+		return nil, fmt.Errorf("verifying a bundle: %w", err)
 	}
 
-	return nil
+	return result, nil
 }
 
-func (v *Verifier) verifyProvenance(bundle *bundle.Bundle, digest []byte) error {
+func (v *Verifier) verifyProvenance(bundle *bundle.Bundle, digest []byte) (*verify.VerificationResult, error) {
 	// TODO: check specific cert identities
-	if _, err := v.SigStore.Verify(
+	result, err := v.SigStore.Verify(
 		bundle,
 		verify.NewPolicy(
 			verify.WithArtifactDigest("sha512", digest),
 			verify.WithoutIdentitiesUnsafe(),
 		),
-	); err != nil {
-		return fmt.Errorf("verifying a bundle: %w", err)
+	)
+	if err != nil {
+		return nil, fmt.Errorf("verifying a bundle: %w", err)
 	}
 
-	return nil
+	return result, nil
 }
 
 func NewNPMPublicKeyVerifier(

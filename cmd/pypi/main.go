@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
 	"github.com/DataDog/go-attestations-verifier/pkg/pypi"
@@ -30,7 +32,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := verifier.Verify(ctx, project, version); err != nil {
+	statuses, err := verifier.Verify(ctx, project, version)
+	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Fprintf(os.Stdout, "%+v\n", statuses)
 }

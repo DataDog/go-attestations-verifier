@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
 	"github.com/DataDog/go-attestations-verifier/pkg/npm"
@@ -20,7 +22,7 @@ func main() {
 
 	npmClient := &npm.Client{HTTP: httputil.DefaultClient()}
 
-	project, err := npmClient.GetPackageVersion(ctx, name, version)
+	pkg, err := npmClient.GetPackageVersion(ctx, name, version)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +32,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := verifier.Verify(ctx, project); err != nil {
+	status, err := verifier.Verify(ctx, pkg)
+	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Fprintf(os.Stdout, "%+v\n", status)
 }
