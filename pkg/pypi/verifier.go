@@ -10,12 +10,29 @@ import (
 	protosigstore "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
 	"github.com/sigstore/protobuf-specs/gen/pb-go/dsse"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
+	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
 type Verifier struct {
 	PyPI     *Client
 	SigStore *verify.SignedEntityVerifier
+}
+
+func NewVerifier(pypi *Client, trustedRoot *root.TrustedRoot) (*Verifier, error) {
+	sigstore, err := verify.NewSignedEntityVerifier(
+		trustedRoot,
+		verify.WithTransparencyLog(1),
+		verify.WithObserverTimestamps(1),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating sigstore verifier: %w", err)
+	}
+
+	return &Verifier{
+		PyPI:     pypi,
+		SigStore: sigstore,
+	}, nil
 }
 
 func (v *Verifier) Verify(ctx context.Context, project *ProjectVersion) error {

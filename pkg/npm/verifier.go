@@ -2,14 +2,40 @@ package npm
 
 import (
 	"context"
+	"crypto"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/verify"
+	"github.com/sigstore/sigstore/pkg/signature"
 )
+
+func NewVerifier(ctx context.Context, npm *Client, trustedRoot *root.TrustedRoot) (*Verifier, error) {
+	sigstore, err := verify.NewSignedEntityVerifier(
+		trustedRoot,
+		verify.WithTransparencyLog(1),
+		verify.WithObserverTimestamps(1),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating sigstore verifier: %w", err)
+	}
+
+	npmPublicKey, err := NewNPMPublicKeyVerifier(ctx, npm, trustedRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Verifier{
+		NPM:          npm,
+		SigStore:     sigstore,
+		NPMPublicKey: npmPublicKey,
+	}, nil
+}
 
 type Verifier struct {
 	NPM          *Client
@@ -79,6 +105,49 @@ func (v *Verifier) verifyProvenance(bundle *bundle.Bundle, digest []byte) error 
 	}
 
 	return nil
+}
+
+func NewNPMPublicKeyVerifier(
+	ctx context.Context,
+	npm *Client,
+	trustedRoot *root.TrustedRoot,
+) (*verify.SignedEntityVerifier, error) {
+	publicKeys, err := npm.GetPublicKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(publicKeys) == 0 {
+		return nil, fmt.Errorf("No public keys returned by NPM")
+	}
+
+	// XXX: There's only one public key provided by NPM at the moment.
+	publicKeyBytes, err := base64.StdEncoding.DecodeString(publicKeys[0].Key)
+	if err != nil {
+		return nil, fmt.Errorf("decoding base64 encoded public key: %w", err)
+	}
+
+	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parsing public key: %w", err)
+	}
+
+	verifier, err := signature.LoadVerifier(publicKey, crypto.SHA256)
+	if err != nil {
+		return nil, fmt.Errorf("loading verifier: %w", err)
+	}
+
+	sev, err := verify.NewSignedEntityVerifier(&verifyTrustedMaterial{
+		TrustedMaterial: trustedRoot,
+		keyTrustedMaterial: root.NewTrustedPublicKeyMaterial(func(_ string) (root.TimeConstrainedVerifier, error) {
+			return root.NewExpiringKey(verifier, time.Time{}, time.Time{}), nil
+		}),
+	}, verify.WithTransparencyLog(1), verify.WithObserverTimestamps(1))
+	if err != nil {
+		return nil, fmt.Errorf("creating new verifier: %w", err)
+	}
+
+	return sev, nil
 }
 
 type verifyTrustedMaterial struct {
