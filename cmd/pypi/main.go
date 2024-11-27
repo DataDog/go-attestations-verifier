@@ -37,5 +37,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Fprintf(os.Stdout, "%+v\n", statuses)
+	for _, status := range statuses {
+		fmt.Fprintf(os.Stdout, "⏳ Verifying file %s (SHA256: %s)\n", status.URL, status.SHA256)
+
+		if !status.HasAttestation {
+			fmt.Fprintln(os.Stdout, "❌ No attestations found")
+
+			continue
+		}
+
+		if status.Error != nil {
+			fmt.Fprintf(os.Stdout, "❌ Error verifying SigStore's provenance: %s\n", status.Error)
+		} else {
+			fmt.Fprintln(os.Stdout, "✅ Verified SigStore's provenance")
+		}
+	}
 }

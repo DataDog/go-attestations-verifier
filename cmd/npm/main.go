@@ -37,5 +37,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Fprintf(os.Stdout, "%+v\n", status)
+	fmt.Fprintf(os.Stdout, "⏳ Verifying file %s (SHA512: %s)\n", status.URL, status.SHA512)
+
+	if !status.HasAttestations {
+		fmt.Fprintln(os.Stdout, "❌ No attestations found")
+
+		return
+	}
+
+	if status.AttestationError != nil {
+		fmt.Fprintf(os.Stdout, "❌ Error verifying NPM's attestation: %s\n", status.AttestationError)
+	} else {
+		fmt.Fprintln(os.Stdout, "✅ Verified NPM's signature with NPM public key")
+	}
+
+	if status.ProvenanceError != nil {
+		fmt.Fprintf(os.Stdout, "❌ Error verifying SigStore's provenance: %s\n", status.ProvenanceError)
+	} else {
+		fmt.Fprintln(os.Stdout, "✅ Verified SigStore's provenance")
+	}
 }
