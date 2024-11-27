@@ -11,11 +11,19 @@ import (
 
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
+	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/sigstore/sigstore/pkg/signature"
 )
 
-func NewVerifier(ctx context.Context, npm *Client, trustedRoot *root.TrustedRoot) (*Verifier, error) {
+func NewVerifier(ctx context.Context, npm *Client) (*Verifier, error) {
+	trustedRoot, err := root.FetchTrustedRootWithOptions(
+		tuf.DefaultOptions().WithCacheValidity(1),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fetching TUF trusted root: %w", err)
+	}
+
 	sigstore, err := verify.NewSignedEntityVerifier(
 		trustedRoot,
 		verify.WithTransparencyLog(1),

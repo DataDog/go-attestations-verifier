@@ -11,6 +11,7 @@ import (
 	"github.com/sigstore/protobuf-specs/gen/pb-go/dsse"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
+	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
@@ -19,7 +20,14 @@ type Verifier struct {
 	SigStore *verify.SignedEntityVerifier
 }
 
-func NewVerifier(pypi *Client, trustedRoot *root.TrustedRoot) (*Verifier, error) {
+func NewVerifier(pypi *Client) (*Verifier, error) {
+	trustedRoot, err := root.FetchTrustedRootWithOptions(
+		tuf.DefaultOptions().WithCacheValidity(1),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fetching TUF trusted root: %w", err)
+	}
+
 	sigstore, err := verify.NewSignedEntityVerifier(
 		trustedRoot,
 		verify.WithTransparencyLog(1),
