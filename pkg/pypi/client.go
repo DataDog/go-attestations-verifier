@@ -18,7 +18,7 @@ import (
 const Host = "pypi.org"
 
 type Client struct {
-	HTTPClient *http.Client
+	HTTP *http.Client
 }
 
 // PyPI seems to use a slightly custom AttestationBundle format
@@ -97,7 +97,7 @@ func (c *Client) GetProvenance(ctx context.Context, name, version, filename stri
 	var provenance Provenance
 	if err := httputil.GetJSON(
 		ctx, url, &provenance,
-		httputil.WithClient(c.HTTPClient),
+		httputil.WithClient(c.HTTP),
 		httputil.WithHeader("Accept", "application/vnd.pypi.integrity.v1+json"),
 	); err != nil {
 		return nil, fmt.Errorf("getting provenance: %w", err)
@@ -208,7 +208,7 @@ func (c *Client) GetProject(ctx context.Context, name string) (*Project, error) 
 	}
 
 	var project Project
-	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTPClient)); err != nil {
+	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
 	}
 
@@ -223,7 +223,7 @@ func (c *Client) GetProjectVersion(ctx context.Context, name, version string) (*
 	}
 
 	var project ProjectVersion
-	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTPClient)); err != nil {
+	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting project version: %w", err)
 	}
 

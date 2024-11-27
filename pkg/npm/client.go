@@ -16,7 +16,7 @@ import (
 const Host = "registry.npmjs.org"
 
 type Client struct {
-	HTTPClient *http.Client
+	HTTP *http.Client
 }
 
 type Key struct {
@@ -38,7 +38,7 @@ func (c *Client) GetPublicKeys(ctx context.Context) ([]Key, error) {
 		Keys []Key `json:"keys"`
 	}
 
-	if err := httputil.GetJSON(ctx, url, &keys, httputil.WithClient(c.HTTPClient)); err != nil {
+	if err := httputil.GetJSON(ctx, url, &keys, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting public keys: %w", err)
 	}
 
@@ -61,7 +61,7 @@ func (c *Client) GetAttestations(ctx context.Context, name, version string) ([]A
 		Attestations []AttestationBundle `json:"attestations"`
 	}
 
-	if err := httputil.GetJSON(ctx, url, &attestations, httputil.WithClient(c.HTTPClient)); err != nil {
+	if err := httputil.GetJSON(ctx, url, &attestations, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting attestations: %w", err)
 	}
 
@@ -156,7 +156,7 @@ func (c *Client) GetPackageVersion(ctx context.Context, name, version string) (*
 	}
 
 	var pkg PackageVersion
-	if err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTPClient)); err != nil {
+	if err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting package version: %w", err)
 	}
 
@@ -171,7 +171,7 @@ func (c *Client) GetPackage(ctx context.Context, name string) (*Package, error) 
 	}
 
 	var pkg Package
-	if err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTPClient)); err != nil {
+	if err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting package: %w", err)
 	}
 
