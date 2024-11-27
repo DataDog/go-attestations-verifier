@@ -114,14 +114,6 @@ type Project struct {
 	Vulnerabilities []Vulnerability      `json:"vulnerabilities"`
 }
 
-type ProjectVersion struct {
-	Info            Info            `json:"info"`
-	LastSerial      int             `json:"last_serial"`
-	Releases        []Release       `json:"releases"`
-	Urls            []Release       `json:"urls"`
-	Vulnerabilities []Vulnerability `json:"vulnerabilities"`
-}
-
 type Info struct {
 	Author                 string      `json:"author"`
 	AuthorEmail            string      `json:"author_email"`
@@ -210,21 +202,6 @@ func (c *Client) GetProject(ctx context.Context, name string) (*Project, error) 
 	var project Project
 	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTP)); err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
-	}
-
-	return &project, nil
-}
-
-func (c *Client) GetProjectVersion(ctx context.Context, name, version string) (*ProjectVersion, error) {
-	url := url.URL{
-		Scheme: httputil.SchemeHTTPS,
-		Host:   Host,
-		Path:   fmt.Sprintf("/pypi/%s/%s/json", name, version),
-	}
-
-	var project ProjectVersion
-	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTP)); err != nil {
-		return nil, fmt.Errorf("getting project version: %w", err)
 	}
 
 	return &project, nil

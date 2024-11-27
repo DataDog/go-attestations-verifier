@@ -43,9 +43,14 @@ func NewVerifier(pypi *Client) (*Verifier, error) {
 	}, nil
 }
 
-func (v *Verifier) Verify(ctx context.Context, project *ProjectVersion) error {
-	for _, release := range project.Releases {
-		provenance, err := v.PyPI.GetProvenance(ctx, project.Info.Name, project.Info.Version, release.Filename)
+func (v *Verifier) Verify(ctx context.Context, project *Project, version string) error {
+	releases, ok := project.Releases[version]
+	if !ok {
+		return fmt.Errorf("No releases for version %q of project %q", version, project.Info.Name)
+	}
+
+	for _, release := range releases {
+		provenance, err := v.PyPI.GetProvenance(ctx, project.Info.Name, version, release.Filename)
 		if err != nil {
 			return err
 		}
