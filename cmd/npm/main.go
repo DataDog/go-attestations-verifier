@@ -11,7 +11,7 @@ import (
 	"github.com/DataDog/go-attestations-verifier/pkg/npm"
 )
 
-var name, version string
+var name, version string //nolint:gochecknoglobals
 
 func main() {
 	flag.StringVar(&name, "name", "", "name of a NPM package to verify")
@@ -49,6 +49,12 @@ func main() {
 		fmt.Fprintf(os.Stdout, "❌ Error verifying NPM's attestation: %s\n", status.AttestationError)
 	} else {
 		fmt.Fprintln(os.Stdout, "✅ Verified NPM's signature with NPM public key")
+	}
+
+	if status.InferredIssuer == "" {
+		fmt.Fprintln(os.Stdout, "❌ Could not infer a certificate issuer. Dangerously defaulting to skip identity checks.")
+	} else {
+		fmt.Fprintf(os.Stdout, "⚠️ Inferred certificate issuer %q\n", status.InferredIssuer)
 	}
 
 	if status.ProvenanceError != nil {

@@ -11,7 +11,7 @@ import (
 	"github.com/DataDog/go-attestations-verifier/pkg/pypi"
 )
 
-var name, version string
+var name, version string //nolint:gochecknoglobals
 
 func main() {
 	flag.StringVar(&name, "name", "", "name of a PyPI project to verify")
@@ -44,6 +44,12 @@ func main() {
 			fmt.Fprintln(os.Stdout, "❌ No attestations found")
 
 			continue
+		}
+
+		if status.InferredIssuer == "" {
+			fmt.Fprintln(os.Stdout, "❌ Could not infer a certificate issuer. Dangerously defaulting to skip identity checks.")
+		} else {
+			fmt.Fprintf(os.Stdout, "⚠️ Inferred certificate issuer %q\n", status.InferredIssuer)
 		}
 
 		if status.Error != nil {

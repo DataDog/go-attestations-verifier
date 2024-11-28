@@ -49,6 +49,7 @@ type Verifier struct {
 type VerificationStatus struct {
 	URL            string
 	SHA256         string
+	InferredIssuer string
 	HasAttestation bool
 	Attestation    *verify.VerificationResult
 	Error          error
@@ -57,7 +58,7 @@ type VerificationStatus struct {
 func (v *Verifier) Verify(ctx context.Context, project *Project, version string) ([]*VerificationStatus, error) {
 	releases, ok := project.Releases[version]
 	if !ok {
-		return nil, fmt.Errorf("No releases for version %q of project %q", version, project.Info.Name)
+		return nil, ErrMissingReleases
 	}
 
 	source, err := httputil.ParseSourceURL(project.Info.ProjectUrls.Source)
@@ -74,8 +75,9 @@ func (v *Verifier) Verify(ctx context.Context, project *Project, version string)
 
 	for index, release := range releases {
 		statuses[index] = &VerificationStatus{
-			URL:    release.URL,
-			SHA256: release.Digests.Sha256,
+			URL:            release.URL,
+			SHA256:         release.Digests.Sha256,
+			InferredIssuer: httputil.IssuerByHost[source.Host],
 		}
 
 		provenance, err := v.PyPI.GetProvenance(ctx, project.Info.Name, version, release.Filename)

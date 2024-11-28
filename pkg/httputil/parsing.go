@@ -21,30 +21,24 @@ func ParseSourceURL(rawURL string) (*url.URL, error) {
 	return url, nil
 }
 
+//nolint:gochecknoglobals
+var IssuerByHost = map[string]string{
+	"github.com": "https://token.actions.githubusercontent.com",
+	"gitlab.com": "https://gitlab.com",
+}
+
 func GetCertID(source *url.URL) (verify.PolicyOption, error) {
-	if source.Host == "github.com" {
-		certID, err := verify.NewShortCertificateIdentity(
-			"https://token.actions.githubusercontent.com",
-			"", "", "^"+source.String(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("creating certificate identity: %w", err)
-		}
-
-		return verify.WithCertificateIdentity(certID), nil
+	issuer, ok := IssuerByHost[source.Host]
+	if !ok {
+		return verify.WithoutIdentitiesUnsafe(), nil
 	}
 
-	if source.Host == "gitlab.com" {
-		certID, err := verify.NewShortCertificateIdentity(
-			"https://gitlab.com",
-			"", "", "^"+source.String(),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("creating certificate identity: %w", err)
-		}
-
-		return verify.WithCertificateIdentity(certID), nil
+	certID, err := verify.NewShortCertificateIdentity(
+		issuer, "", "", "^"+source.String(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating certificate identity: %w", err)
 	}
 
-	return verify.WithoutIdentitiesUnsafe(), nil
+	return verify.WithCertificateIdentity(certID), nil
 }

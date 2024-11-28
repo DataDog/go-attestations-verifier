@@ -57,6 +57,7 @@ type Verifier struct {
 type VerificationStatus struct {
 	URL              string
 	SHA512           string
+	InferredIssuer   string
 	HasAttestations  bool
 	Attestation      *verify.VerificationResult
 	AttestationError error
@@ -67,7 +68,7 @@ type VerificationStatus struct {
 func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*VerificationStatus, error) {
 	encodedDigest, ok := strings.CutPrefix(pkg.Dist.Integrity, "sha512-")
 	if !ok {
-		return nil, fmt.Errorf("sha512 digest not found for package's version")
+		return nil, ErrMissingSHA512Digest
 	}
 
 	source, err := httputil.ParseSourceURL(getSourceURL(pkg))
@@ -81,8 +82,9 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 	}
 
 	status := &VerificationStatus{
-		URL:    pkg.Dist.Tarball,
-		SHA512: encodedDigest,
+		URL:            pkg.Dist.Tarball,
+		SHA512:         encodedDigest,
+		InferredIssuer: httputil.IssuerByHost[source.Host],
 	}
 
 	digest, err := base64.StdEncoding.DecodeString(encodedDigest)
@@ -162,7 +164,7 @@ func NewNPMPublicKeyVerifier(
 	}
 
 	if len(publicKeys) == 0 {
-		return nil, fmt.Errorf("No public keys returned by NPM")
+		return nil, ErrMissingPublicKeys
 	}
 
 	// XXX: There's only one public key provided by NPM at the moment.
@@ -199,6 +201,7 @@ type verifyTrustedMaterial struct {
 	keyTrustedMaterial root.TrustedMaterial
 }
 
+//nolint:ireturn
 func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstrainedVerifier, error) {
 	tcv, err := v.keyTrustedMaterial.PublicKeyVerifier(hint)
 	if err != nil {
