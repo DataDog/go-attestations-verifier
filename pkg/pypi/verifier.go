@@ -60,6 +60,16 @@ func (v *Verifier) Verify(ctx context.Context, project *Project, version string)
 		return nil, fmt.Errorf("No releases for version %q of project %q", version, project.Info.Name)
 	}
 
+	source, err := httputil.ParseSourceURL(project.Info.ProjectUrls.Source)
+	if err != nil {
+		return nil, fmt.Errorf("parsing source url: %w", err)
+	}
+
+	certID, err := httputil.GetCertID(source)
+	if err != nil {
+		return nil, fmt.Errorf("inferring certificate id: %w", err)
+	}
+
 	statuses := make([]*VerificationStatus, len(releases))
 
 	for index, release := range releases {
@@ -98,7 +108,7 @@ func (v *Verifier) Verify(ctx context.Context, project *Project, version string)
 					continue
 				}
 
-				statuses[index].Attestation, statuses[index].Error = v.verifyBundle(bundle, digest)
+				statuses[index].Attestation, statuses[index].Error = v.verifyBundle(bundle, digest, certID)
 			}
 		}
 	}
@@ -141,12 +151,16 @@ func transcribeBundle(attestation Attestation) (*bundle.Bundle, error) {
 	}}, nil
 }
 
-func (v *Verifier) verifyBundle(bundle *bundle.Bundle, digest []byte) (*verify.VerificationResult, error) {
+func (v *Verifier) verifyBundle(
+	bundle *bundle.Bundle,
+	digest []byte,
+	certID verify.PolicyOption,
+) (*verify.VerificationResult, error) {
 	result, err := v.SigStore.Verify(
 		bundle,
 		verify.NewPolicy(
 			verify.WithArtifactDigest("sha256", digest),
-			verify.WithoutIdentitiesUnsafe(), // TODO: check specific cert identities
+			certID,
 		),
 	)
 	if err != nil {

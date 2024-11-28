@@ -65,16 +65,25 @@ type VerificationStatus struct {
 }
 
 func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*VerificationStatus, error) {
-	status := &VerificationStatus{
-		URL: pkg.Dist.Tarball,
-	}
-
 	encodedDigest, ok := strings.CutPrefix(pkg.Dist.Integrity, "sha512-")
 	if !ok {
 		return nil, fmt.Errorf("sha512 digest not found for package's version")
 	}
 
-	status.SHA512 = encodedDigest
+	source, err := httputil.ParseSourceURL(getSourceURL(pkg))
+	if err != nil {
+		return nil, fmt.Errorf("parsing source url: %w", err)
+	}
+
+	certID, err := httputil.GetCertID(source)
+	if err != nil {
+		return nil, fmt.Errorf("inferring certificate id: %w", err)
+	}
+
+	status := &VerificationStatus{
+		URL:    pkg.Dist.Tarball,
+		SHA512: encodedDigest,
+	}
 
 	digest, err := base64.StdEncoding.DecodeString(encodedDigest)
 	if err != nil {
@@ -99,7 +108,7 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 		}
 
 		if attestation.PredicateType == "https://slsa.dev/provenance/v1" {
-			status.Provenance, status.ProvenanceError = v.verifyProvenance(attestation.Bundle, digest)
+			status.Provenance, status.ProvenanceError = v.verifyProvenance(attestation.Bundle, digest, certID)
 		}
 	}
 
@@ -123,13 +132,16 @@ func (v *Verifier) verifyAttestation(bundle *bundle.Bundle, digest []byte) (*ver
 	return result, nil
 }
 
-func (v *Verifier) verifyProvenance(bundle *bundle.Bundle, digest []byte) (*verify.VerificationResult, error) {
-	// TODO: check specific cert identities
+func (v *Verifier) verifyProvenance(
+	bundle *bundle.Bundle,
+	digest []byte,
+	certID verify.PolicyOption,
+) (*verify.VerificationResult, error) {
 	result, err := v.SigStore.Verify(
 		bundle,
 		verify.NewPolicy(
 			verify.WithArtifactDigest("sha512", digest),
-			verify.WithoutIdentitiesUnsafe(),
+			certID,
 		),
 	)
 	if err != nil {
@@ -194,4 +206,30 @@ func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstra
 	}
 
 	return tcv, nil
+}
+
+// The `Repository` field in `PackageVersion` can have multiple types.
+func getSourceURL(pkg *PackageVersion) string {
+	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
+	// The value had the form OWNER/REPO so we prepend "https://github.com" and append ".git" to match the other cases.
+	if repository, ok := pkg.Repository.(string); ok {
+		return fmt.Sprintf("https://github.com/%s.git", repository)
+	}
+
+	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
+	// This seems to be the "normal" field type.
+	if repository, ok := pkg.Repository.(Repository); ok {
+		return repository.URL
+	}
+
+	// Observed for instance in https://registry.npmjs.org/tmp
+	if repositories, ok := pkg.Repository.([]interface{}); ok {
+		if len(repositories) > 0 {
+			if repository, ok := repositories[0].(Repository); ok {
+				return repository.URL
+			}
+		}
+	}
+
+	return ""
 }
