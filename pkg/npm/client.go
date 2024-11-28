@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
+	"github.com/DataDog/go-attestations-verifier/internal/httputil"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 )
 

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
+	"github.com/DataDog/go-attestations-verifier/internal/httputil"
 	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 	protosigstore "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
 	"github.com/sigstore/protobuf-specs/gen/pb-go/dsse"

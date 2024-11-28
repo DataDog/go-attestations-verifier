@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
+	"github.com/DataDog/go-attestations-verifier/internal/httputil"
 	rekor "github.com/sigstore/protobuf-specs/gen/pb-go/rekor/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 )

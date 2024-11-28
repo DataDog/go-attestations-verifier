@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/DataDog/go-attestations-verifier/pkg/httputil"
+	"github.com/DataDog/go-attestations-verifier/internal/httputil"
 	"github.com/DataDog/go-attestations-verifier/pkg/pypi"
 )
 
