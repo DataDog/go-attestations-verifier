@@ -118,6 +118,11 @@ func (v *Verifier) Verify(ctx context.Context, project *Project, version string)
 	return statuses, nil
 }
 
+// transcribeBundle returns a sigstore bundle (as defined in https://github.com/sigstore/cosign/blob/main/specs/BUNDLE_SPEC.md) based on a PyPI attestation.
+// This way we can use the sigstore-go library to verify the bundle later.
+// PyPI uses a slightly different format than sigstore to stores attestations in. Basically both provides:
+// - a signature (typically a DSSE enveloppe)
+// - verification materials that can be used by the verifier to verify the signature (typically a public key identifier or a certificate chain)
 func transcribeBundle(attestation Attestation) (*bundle.Bundle, error) {
 	cert, err := base64.StdEncoding.DecodeString(attestation.VerificationMaterials.Certificate)
 	if err != nil {
