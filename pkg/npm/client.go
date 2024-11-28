@@ -4,6 +4,7 @@ package npm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -91,7 +92,7 @@ type PackageVersion struct {
 	Name            string            `json:"name"`
 	Description     string            `json:"description"`
 	Version         string            `json:"version"`
-	Repository      interface{}       `json:"repository"`
+	Repository      Repository        `json:"repository"`
 	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"devDependencies"`
 	GitHead         string            `json:"gitHead"`
@@ -106,6 +107,43 @@ type PackageVersion struct {
 type Repository struct {
 	Type string `json:"type"`
 	URL  string `json:"url"`
+}
+
+// The `Repository` field in `PackageVersion` can have multiple types.
+func (r *Repository) UnmarshalJSON(data []byte) error {
+	var rawRepository interface{}
+	if err := json.Unmarshal(data, &rawRepository); err != nil {
+		return fmt.Errorf("parsing json encoded repository: %w", err)
+	}
+
+	// Observed for instance in old versions of https://registry.npmjs.org/postcss-normalize-charset.
+	// The value had the form OWNER/REPO so we prepend "https://github.com" and append ".git" to match the other cases.
+	// XXX: We assume the git provider is github.com but this may not always be the case.
+	// Experimentally, this case seems to be rather and is probably related to an older version of NPM.
+	// Recent packages that publish attestations should not fall through this case.
+	if repository, ok := rawRepository.(string); ok {
+		r.URL = fmt.Sprintf("https://github.com/%s.git", repository)
+		r.Type = "git"
+	}
+
+	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
+	// This seems to be the "normal" field type.
+	if repository, ok := rawRepository.(map[string]interface{}); ok {
+		r.URL = repository["url"].(string)
+		r.Type = repository["type"].(string)
+	}
+
+	// Observed for instance in https://registry.npmjs.org/tmp
+	if repositories, ok := rawRepository.([]interface{}); ok {
+		if len(repositories) > 0 {
+			if repository, ok := repositories[0].(map[string]interface{}); ok {
+				r.URL = repository["url"].(string)
+				r.Type = repository["type"].(string)
+			}
+		}
+	}
+
+	return nil
 }
 
 type Signature struct {

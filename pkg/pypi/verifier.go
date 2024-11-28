@@ -110,6 +110,8 @@ func (v *Verifier) Verify(ctx context.Context, project *Project, version string)
 					continue
 				}
 
+				// XXX: the current format allows multiple attestations per release, and multiple sigstore bundles per attestations.
+				// However it seems they only contain a single sigstore provenance so far which is what this code assumes for now.
 				statuses[index].Attestation, statuses[index].Error = v.verifyBundle(bundle, digest, certID)
 			}
 		}

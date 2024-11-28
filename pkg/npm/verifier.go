@@ -71,7 +71,7 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 		return nil, ErrMissingSHA512Digest
 	}
 
-	source, err := httputil.ParseSourceURL(getSourceURL(pkg))
+	source, err := httputil.ParseSourceURL(pkg.Repository.URL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing source url: %w", err)
 	}
@@ -209,30 +209,4 @@ func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstra
 	}
 
 	return tcv, nil
-}
-
-// The `Repository` field in `PackageVersion` can have multiple types.
-func getSourceURL(pkg *PackageVersion) string {
-	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
-	// The value had the form OWNER/REPO so we prepend "https://github.com" and append ".git" to match the other cases.
-	if repository, ok := pkg.Repository.(string); ok {
-		return fmt.Sprintf("https://github.com/%s.git", repository)
-	}
-
-	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
-	// This seems to be the "normal" field type.
-	if repository, ok := pkg.Repository.(Repository); ok {
-		return repository.URL
-	}
-
-	// Observed for instance in https://registry.npmjs.org/tmp
-	if repositories, ok := pkg.Repository.([]interface{}); ok {
-		if len(repositories) > 0 {
-			if repository, ok := repositories[0].(Repository); ok {
-				return repository.URL
-			}
-		}
-	}
-
-	return ""
 }
