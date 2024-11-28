@@ -55,6 +55,7 @@ type VerificationStatus struct {
 	Error          error
 }
 
+//nolint:funlen,cyclop
 func (v *Verifier) Verify(ctx context.Context, project *Project, version string) ([]*VerificationStatus, error) {
 	releases, ok := project.Releases[version]
 	if !ok {

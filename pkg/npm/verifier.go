@@ -65,6 +65,7 @@ type VerificationStatus struct {
 	ProvenanceError  error
 }
 
+//nolint:cyclop
 func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*VerificationStatus, error) {
 	encodedDigest, ok := strings.CutPrefix(pkg.Dist.Integrity, "sha512-")
 	if !ok {
