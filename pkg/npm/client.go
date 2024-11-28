@@ -127,18 +127,18 @@ func (r *Repository) UnmarshalJSON(data []byte) error {
 	}
 
 	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
-	// This seems to be the "normal" field type.
+	// This seems to be the usual field type.
 	if repository, ok := rawRepository.(map[string]interface{}); ok {
-		r.URL = repository["url"].(string)
-		r.Type = repository["type"].(string)
+		r.URL = repository["url"].(string)   //nolint:forcetypeassert
+		r.Type = repository["type"].(string) //nolint:forcetypeassert
 	}
 
 	// Observed for instance in https://registry.npmjs.org/tmp
 	if repositories, ok := rawRepository.([]interface{}); ok {
 		if len(repositories) > 0 {
 			if repository, ok := repositories[0].(map[string]interface{}); ok {
-				r.URL = repository["url"].(string)
-				r.Type = repository["type"].(string)
+				r.URL = repository["url"].(string)   //nolint:forcetypeassert
+				r.Type = repository["type"].(string) //nolint:forcetypeassert
 			}
 		}
 	}
