@@ -19,6 +19,8 @@ Each one defines a `Client` exposing methods to interact with both registries ov
 
 Each package also defines a `Verifier` exposing a `Verify` method to check attestations for a given package.
 
+Check out [./pkg/npm/verifier_test.go](./pkg/npm/verifier_test.go) and [./pkg/pypi/verifier_test.go](./pkg/pypi/verifier_test.go) to see some basic examples of both `Verifier`s usage.
+
 ### NPM specificities
 
 NPM supports sigstore attestations as documented in https://docs.npmjs.com/generating-provenance-statements.
