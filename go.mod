@@ -6,7 +6,7 @@ require (
 	github.com/sigstore/protobuf-specs v0.3.2
 	github.com/sigstore/sigstore v1.8.12
 	github.com/sigstore/sigstore-go v0.6.2
-	google.golang.org/protobuf v1.35.2
+	google.golang.org/protobuf v1.36.2
 )
 
 require (
