@@ -4,7 +4,7 @@ go 1.23.2
 
 require (
 	github.com/sigstore/protobuf-specs v0.4.0
-	github.com/sigstore/sigstore v1.9.0
+	github.com/sigstore/sigstore v1.9.1
 	github.com/sigstore/sigstore-go v0.7.0
 	google.golang.org/protobuf v1.36.5
 )
