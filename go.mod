@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/sigstore/protobuf-specs v0.4.1
-	github.com/sigstore/sigstore v1.9.3
+	github.com/sigstore/sigstore v1.9.4
 	github.com/sigstore/sigstore-go v0.7.2
 	google.golang.org/protobuf v1.36.6
 )
