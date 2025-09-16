@@ -77,7 +77,8 @@ func GetJSON(ctx context.Context, url url.URL, out interface{}, options ...Optio
 		return err
 	}
 
-	if err := json.Unmarshal(data, out); err != nil {
+	err = json.Unmarshal(data, out)
+	if err != nil {
 		return fmt.Errorf("parsing json response: %w", err)
 	}
 

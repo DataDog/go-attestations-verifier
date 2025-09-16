@@ -19,6 +19,12 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 )
 
+type Verifier struct {
+	NPM          *Client
+	SigStore     *verify.Verifier
+	NPMPublicKey *verify.Verifier
+}
+
 func NewVerifier(ctx context.Context, npm *Client) (*Verifier, error) {
 	trustedRoot, err := root.FetchTrustedRootWithOptions(
 		tuf.DefaultOptions().WithCacheValidity(1),
@@ -27,7 +33,7 @@ func NewVerifier(ctx context.Context, npm *Client) (*Verifier, error) {
 		return nil, fmt.Errorf("fetching TUF trusted root: %w", err)
 	}
 
-	sigstore, err := verify.NewSignedEntityVerifier(
+	sigstore, err := verify.NewVerifier(
 		trustedRoot,
 		verify.WithTransparencyLog(1),
 		verify.WithObserverTimestamps(1),
@@ -46,12 +52,6 @@ func NewVerifier(ctx context.Context, npm *Client) (*Verifier, error) {
 		SigStore:     sigstore,
 		NPMPublicKey: npmPublicKey,
 	}, nil
-}
-
-type Verifier struct {
-	NPM          *Client
-	SigStore     *verify.SignedEntityVerifier
-	NPMPublicKey *verify.SignedEntityVerifier
 }
 
 type VerificationStatus struct {
@@ -158,7 +158,7 @@ func NewNPMPublicKeyVerifier(
 	ctx context.Context,
 	npm *Client,
 	trustedRoot *root.TrustedRoot,
-) (*verify.SignedEntityVerifier, error) {
+) (*verify.Verifier, error) {
 	publicKeys, err := npm.GetPublicKeys(ctx)
 	if err != nil {
 		return nil, err
@@ -184,7 +184,7 @@ func NewNPMPublicKeyVerifier(
 		return nil, fmt.Errorf("loading verifier: %w", err)
 	}
 
-	sev, err := verify.NewSignedEntityVerifier(&verifyTrustedMaterial{
+	sev, err := verify.NewVerifier(&verifyTrustedMaterial{
 		TrustedMaterial: trustedRoot,
 		keyTrustedMaterial: root.NewTrustedPublicKeyMaterial(func(_ string) (root.TimeConstrainedVerifier, error) {
 			return root.NewExpiringKey(verifier, time.Time{}, time.Time{}), nil
@@ -199,6 +199,7 @@ func NewNPMPublicKeyVerifier(
 
 type verifyTrustedMaterial struct {
 	root.TrustedMaterial
+
 	keyTrustedMaterial root.TrustedMaterial
 }
 

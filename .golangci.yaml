@@ -1,13 +1,38 @@
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    - exportloopref # Deprecated
     - exhaustruct # Noisy
     - tagliatelle # Triggers on JSON struct tags we don't control (NPM or PyPI specific)
-linters-settings:
-  depguard:
-    rules:
-      main:
-        allow:
-          - $gostd
-          - github.com
+    - wsl # Deprecated
+  settings:
+    depguard:
+      rules:
+        main:
+          allow:
+            - $gostd
+            - github.com
+            - google.golang.org
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

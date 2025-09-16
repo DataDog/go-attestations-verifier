@@ -63,7 +63,8 @@ func (v *VerificationMaterials) UnmarshalJSON(bytes []byte) error {
 		TransparencyEntries []any  `json:"transparency_entries"`
 	}
 
-	if err := json.Unmarshal(bytes, &raw); err != nil {
+	err := json.Unmarshal(bytes, &raw)
+	if err != nil {
 		return fmt.Errorf("parsing json encoded verification materials: %w", err)
 	}
 
@@ -77,7 +78,9 @@ func (v *VerificationMaterials) UnmarshalJSON(bytes []byte) error {
 		}
 
 		var parsedEntry rekor.TransparencyLogEntry
-		if err := protojson.Unmarshal(serializedEntries, &parsedEntry); err != nil {
+
+		err = protojson.Unmarshal(serializedEntries, &parsedEntry)
+		if err != nil {
 			return fmt.Errorf("parsing a protojson encoded rekor transparency log entry: %w", err)
 		}
 
@@ -95,11 +98,13 @@ func (c *Client) GetProvenance(ctx context.Context, name, version, filename stri
 	}
 
 	var provenance Provenance
-	if err := httputil.GetJSON(
+
+	err := httputil.GetJSON(
 		ctx, url, &provenance,
 		httputil.WithClient(c.HTTP),
 		httputil.WithHeader("Accept", "application/vnd.pypi.integrity.v1+json"),
-	); err != nil {
+	)
+	if err != nil {
 		return nil, fmt.Errorf("getting provenance: %w", err)
 	}
 
@@ -200,7 +205,9 @@ func (c *Client) GetProject(ctx context.Context, name string) (*Project, error) 
 	}
 
 	var project Project
-	if err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTP)); err != nil {
+
+	err := httputil.GetJSON(ctx, url, &project, httputil.WithClient(c.HTTP))
+	if err != nil {
 		return nil, fmt.Errorf("getting project: %w", err)
 	}
 

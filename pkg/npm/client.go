@@ -39,7 +39,8 @@ func (c *Client) GetPublicKeys(ctx context.Context) ([]Key, error) {
 		Keys []Key `json:"keys"`
 	}
 
-	if err := httputil.GetJSON(ctx, url, &keys, httputil.WithClient(c.HTTP)); err != nil {
+	err := httputil.GetJSON(ctx, url, &keys, httputil.WithClient(c.HTTP))
+	if err != nil {
 		return nil, fmt.Errorf("getting public keys: %w", err)
 	}
 
@@ -62,7 +63,8 @@ func (c *Client) GetAttestations(ctx context.Context, name, version string) ([]A
 		Attestations []AttestationBundle `json:"attestations"`
 	}
 
-	if err := httputil.GetJSON(ctx, url, &attestations, httputil.WithClient(c.HTTP)); err != nil {
+	err := httputil.GetJSON(ctx, url, &attestations, httputil.WithClient(c.HTTP))
+	if err != nil {
 		return nil, fmt.Errorf("getting attestations: %w", err)
 	}
 
@@ -112,7 +114,9 @@ type Repository struct {
 // The `Repository` field in `PackageVersion` can have multiple types.
 func (r *Repository) UnmarshalJSON(data []byte) error {
 	var rawRepository interface{}
-	if err := json.Unmarshal(data, &rawRepository); err != nil {
+
+	err := json.Unmarshal(data, &rawRepository)
+	if err != nil {
 		return fmt.Errorf("parsing json encoded repository: %w", err)
 	}
 
@@ -194,7 +198,9 @@ func (c *Client) GetPackageVersion(ctx context.Context, name, version string) (*
 	}
 
 	var pkg PackageVersion
-	if err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTP)); err != nil {
+
+	err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTP))
+	if err != nil {
 		return nil, fmt.Errorf("getting package version: %w", err)
 	}
 
@@ -209,7 +215,9 @@ func (c *Client) GetPackage(ctx context.Context, name string) (*Package, error) 
 	}
 
 	var pkg Package
-	if err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTP)); err != nil {
+
+	err := httputil.GetJSON(ctx, url, &pkg, httputil.WithClient(c.HTTP))
+	if err != nil {
 		return nil, fmt.Errorf("getting package: %w", err)
 	}
 

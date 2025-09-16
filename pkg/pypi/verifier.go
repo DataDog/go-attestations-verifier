@@ -18,6 +18,11 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/verify"
 )
 
+type Verifier struct {
+	PyPI     *Client
+	SigStore *verify.Verifier
+}
+
 func NewVerifier(pypi *Client) (*Verifier, error) {
 	trustedRoot, err := root.FetchTrustedRootWithOptions(
 		tuf.DefaultOptions().WithCacheValidity(1),
@@ -26,7 +31,7 @@ func NewVerifier(pypi *Client) (*Verifier, error) {
 		return nil, fmt.Errorf("fetching TUF trusted root: %w", err)
 	}
 
-	sigstore, err := verify.NewSignedEntityVerifier(
+	sigstore, err := verify.NewVerifier(
 		trustedRoot,
 		verify.WithTransparencyLog(1),
 		verify.WithObserverTimestamps(1),
@@ -39,11 +44,6 @@ func NewVerifier(pypi *Client) (*Verifier, error) {
 		PyPI:     pypi,
 		SigStore: sigstore,
 	}, nil
-}
-
-type Verifier struct {
-	PyPI     *Client
-	SigStore *verify.SignedEntityVerifier
 }
 
 type VerificationStatus struct {
