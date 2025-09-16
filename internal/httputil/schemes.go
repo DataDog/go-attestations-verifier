@@ -1,6 +1,3 @@
 package httputil
 
-const (
-	SchemeHTTP  = "http"
-	SchemeHTTPS = "https"
-)
+const SchemeHTTPS = "https"
