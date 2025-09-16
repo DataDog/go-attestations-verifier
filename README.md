@@ -60,3 +60,10 @@ golangci-lint run
 go install github.com/google/go-licenses
 $GOPATH/bin/go-licenses report github.com/DataDog/go-attestations-verifier/cmd | sort > ./LICENSE-3rdparty.csv
 ```
+
+### Release a new version
+
+```shell
+git tag -a v0.1.0 -m "New release"
+git push origin v0.1.0
+```
