@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//nolint:funlen
 func npmCmd() *cobra.Command {
 	var name, version string
 
@@ -44,7 +46,14 @@ func npmCmd() *cobra.Command {
 			if status.AttestationError != nil {
 				fmt.Fprintf(os.Stdout, "❌ Error verifying NPM's attestation: %s\n", status.AttestationError)
 			} else {
-				fmt.Fprintln(os.Stdout, "✅ Verified NPM's signature with NPM public key")
+				fmt.Fprintln(os.Stdout, "✅ Verified NPM's signature with NPM public keys:")
+
+				out, err := json.MarshalIndent(status.Attestation, "", "\t")
+				if err != nil {
+					return fmt.Errorf("marshalling NPM's attestation: %w", err)
+				}
+
+				fmt.Fprintln(os.Stdout, string(out))
 			}
 
 			if status.InferredIssuer == "" {
@@ -56,7 +65,14 @@ func npmCmd() *cobra.Command {
 			if status.ProvenanceError != nil {
 				fmt.Fprintf(os.Stdout, "❌ Error verifying SigStore's provenance: %s\n", status.ProvenanceError)
 			} else {
-				fmt.Fprintln(os.Stdout, "✅ Verified SigStore's provenance")
+				fmt.Fprintln(os.Stdout, "✅ Verified SigStore's provenance:")
+
+				out, err := json.MarshalIndent(status.Provenance, "", "\t")
+				if err != nil {
+					return fmt.Errorf("marshalling SigStore's provenance: %w", err)
+				}
+
+				fmt.Fprintln(os.Stdout, string(out))
 			}
 
 			return nil

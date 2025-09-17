@@ -20,9 +20,9 @@ import (
 )
 
 type Verifier struct {
-	NPM          *Client
-	SigStore     *verify.Verifier
-	NPMPublicKey *verify.Verifier
+	NPM           *Client
+	SigStore      *verify.Verifier
+	NPMPublicKeys []*verify.Verifier
 }
 
 func NewVerifier(ctx context.Context, npm *Client) (*Verifier, error) {
@@ -42,15 +42,15 @@ func NewVerifier(ctx context.Context, npm *Client) (*Verifier, error) {
 		return nil, fmt.Errorf("creating sigstore verifier: %w", err)
 	}
 
-	npmPublicKey, err := NewNPMPublicKeyVerifier(ctx, npm, trustedRoot)
+	npmPublicKeys, err := NewNPMPublicKeyVerifiers(ctx, npm, trustedRoot)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Verifier{
-		NPM:          npm,
-		SigStore:     sigstore,
-		NPMPublicKey: npmPublicKey,
+		NPM:           npm,
+		SigStore:      sigstore,
+		NPMPublicKeys: npmPublicKeys,
 	}, nil
 }
 
@@ -107,7 +107,7 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 
 	for _, attestation := range attestations {
 		if attestation.PredicateType == "https://github.com/npm/attestation/tree/main/specs/publish/v0.1" {
-			status.Attestation, status.ProvenanceError = v.verifyAttestation(attestation.Bundle, digest)
+			status.Attestation, status.AttestationError = v.verifyAttestation(attestation.Bundle, digest)
 		}
 
 		if attestation.PredicateType == "https://slsa.dev/provenance/v1" {
@@ -121,18 +121,30 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 // Verification logic taken from:
 // https://github.com/sigstore/sigstore-go/blob/main/docs/verification.md
 func (v *Verifier) verifyAttestation(bundle *bundle.Bundle, digest []byte) (*verify.VerificationResult, error) {
-	result, err := v.NPMPublicKey.Verify(
-		bundle,
-		verify.NewPolicy(
-			verify.WithArtifactDigest("sha512", digest),
-			verify.WithKey(),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("verifying a bundle: %w", err)
+	var lastErr error
+
+	for keyIndex, verifier := range v.NPMPublicKeys {
+		result, err := verifier.Verify(
+			bundle,
+			verify.NewPolicy(
+				verify.WithArtifactDigest("sha512", digest),
+				verify.WithKey(),
+			),
+		)
+		if err != nil {
+			lastErr = fmt.Errorf("verifying bundle with key %d: %w", keyIndex, err)
+
+			continue
+		}
+
+		return result, nil
 	}
 
-	return result, nil
+	if lastErr != nil {
+		return nil, fmt.Errorf("verifying bundle failed with all public keys, last error: %w", lastErr)
+	}
+
+	return nil, ErrNoPublicKeysVerifiers
 }
 
 func (v *Verifier) verifyProvenance(
@@ -154,11 +166,11 @@ func (v *Verifier) verifyProvenance(
 	return result, nil
 }
 
-func NewNPMPublicKeyVerifier(
+func NewNPMPublicKeyVerifiers(
 	ctx context.Context,
 	npm *Client,
 	trustedRoot *root.TrustedRoot,
-) (*verify.Verifier, error) {
+) ([]*verify.Verifier, error) {
 	publicKeys, err := npm.GetPublicKeys(ctx)
 	if err != nil {
 		return nil, err
@@ -168,33 +180,38 @@ func NewNPMPublicKeyVerifier(
 		return nil, ErrMissingPublicKeys
 	}
 
-	// XXX: There's only one public key provided by NPM at the moment.
-	publicKeyBytes, err := base64.StdEncoding.DecodeString(publicKeys[0].Key)
-	if err != nil {
-		return nil, fmt.Errorf("decoding base64 encoded public key: %w", err)
+	verifiers := make([]*verify.Verifier, 0, len(publicKeys))
+
+	for keyIndex, key := range publicKeys {
+		publicKeyBytes, err := base64.StdEncoding.DecodeString(key.Key)
+		if err != nil {
+			return nil, fmt.Errorf("decoding base64 encoded public key %d: %w", keyIndex, err)
+		}
+
+		publicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
+		if err != nil {
+			return nil, fmt.Errorf("parsing public key %d: %w", keyIndex, err)
+		}
+
+		verifier, err := signature.LoadVerifier(publicKey, crypto.SHA256)
+		if err != nil {
+			return nil, fmt.Errorf("loading verifier for key %d: %w", keyIndex, err)
+		}
+
+		sev, err := verify.NewVerifier(&verifyTrustedMaterial{
+			TrustedMaterial: trustedRoot,
+			keyTrustedMaterial: root.NewTrustedPublicKeyMaterial(func(_ string) (root.TimeConstrainedVerifier, error) {
+				return root.NewExpiringKey(verifier, time.Time{}, time.Time{}), nil
+			}),
+		}, verify.WithTransparencyLog(1), verify.WithObserverTimestamps(1))
+		if err != nil {
+			return nil, fmt.Errorf("creating new verifier for key %d: %w", keyIndex, err)
+		}
+
+		verifiers = append(verifiers, sev)
 	}
 
-	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("parsing public key: %w", err)
-	}
-
-	verifier, err := signature.LoadVerifier(publicKey, crypto.SHA256)
-	if err != nil {
-		return nil, fmt.Errorf("loading verifier: %w", err)
-	}
-
-	sev, err := verify.NewVerifier(&verifyTrustedMaterial{
-		TrustedMaterial: trustedRoot,
-		keyTrustedMaterial: root.NewTrustedPublicKeyMaterial(func(_ string) (root.TimeConstrainedVerifier, error) {
-			return root.NewExpiringKey(verifier, time.Time{}, time.Time{}), nil
-		}),
-	}, verify.WithTransparencyLog(1), verify.WithObserverTimestamps(1))
-	if err != nil {
-		return nil, fmt.Errorf("creating new verifier: %w", err)
-	}
-
-	return sev, nil
+	return verifiers, nil
 }
 
 type verifyTrustedMaterial struct {

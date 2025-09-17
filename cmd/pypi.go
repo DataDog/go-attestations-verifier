@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//nolint:funlen
 func pypiCmd() *cobra.Command {
 	var name, version string
 
@@ -51,7 +53,14 @@ func pypiCmd() *cobra.Command {
 				if status.Error != nil {
 					fmt.Fprintf(os.Stdout, "❌ Error verifying SigStore's provenance: %s\n", status.Error)
 				} else {
-					fmt.Fprintln(os.Stdout, "✅ Verified SigStore's provenance")
+					fmt.Fprintln(os.Stdout, "✅ Verified SigStore's provenance:")
+
+					out, err := json.MarshalIndent(status.Attestation, "", "\t")
+					if err != nil {
+						return fmt.Errorf("marshalling SigStore's provenance: %w", err)
+					}
+
+					fmt.Fprintln(os.Stdout, string(out))
 				}
 			}
 
