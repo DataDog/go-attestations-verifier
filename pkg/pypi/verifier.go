@@ -113,7 +113,13 @@ func (v *Verifier) Verify(ctx context.Context, project *Project, version string)
 
 				// XXX: the current format allows multiple attestations per release, and multiple sigstore bundles per attestations.
 				// However it seems they only contain a single sigstore provenance so far which is what this code assumes for now.
-				statuses[index].Attestation, statuses[index].Error = v.verifyBundle(bundle, digest, certID)
+				statuses[index].Attestation, statuses[index].Error = v.SigStore.Verify(
+					bundle,
+					verify.NewPolicy(
+						verify.WithArtifactDigest("sha256", digest),
+						certID,
+					),
+				)
 			}
 		}
 	}
@@ -145,39 +151,22 @@ func transcribeBundle(attestation Attestation) (*bundle.Bundle, error) {
 	}
 
 	// This is inspired by https://github.com/trailofbits/pypi-attestations/blob/main/src/pypi_attestations/_impl.py#L246
-	return &bundle.Bundle{Bundle: &protobundle.Bundle{
-		MediaType: "application/vnd.dev.sigstore.bundle.v0.3+json",
-		VerificationMaterial: &protobundle.VerificationMaterial{
-			Content: &protobundle.VerificationMaterial_Certificate{
-				Certificate: &protosigstore.X509Certificate{RawBytes: cert},
+	return &bundle.Bundle{
+		Bundle: &protobundle.Bundle{
+			MediaType: "application/vnd.dev.sigstore.bundle.v0.3+json",
+			VerificationMaterial: &protobundle.VerificationMaterial{
+				Content: &protobundle.VerificationMaterial_Certificate{
+					Certificate: &protosigstore.X509Certificate{RawBytes: cert},
+				},
+				TlogEntries: attestation.VerificationMaterials.TransparencyEntries,
 			},
-			TlogEntries: attestation.VerificationMaterials.TransparencyEntries,
-		},
-		Content: &protobundle.Bundle_DsseEnvelope{
-			DsseEnvelope: &dsse.Envelope{
-				Payload:     payload,
-				PayloadType: "application/vnd.in-toto+json",
-				Signatures:  []*dsse.Signature{{Sig: signature}},
+			Content: &protobundle.Bundle_DsseEnvelope{
+				DsseEnvelope: &dsse.Envelope{
+					Payload:     payload,
+					PayloadType: "application/vnd.in-toto+json",
+					Signatures:  []*dsse.Signature{{Sig: signature}},
+				},
 			},
 		},
-	}}, nil
-}
-
-func (v *Verifier) verifyBundle(
-	bundle *bundle.Bundle,
-	digest []byte,
-	certID verify.PolicyOption,
-) (*verify.VerificationResult, error) {
-	result, err := v.SigStore.Verify(
-		bundle,
-		verify.NewPolicy(
-			verify.WithArtifactDigest("sha256", digest),
-			certID,
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("verifying a bundle: %w", err)
-	}
-
-	return result, nil
+	}, nil
 }

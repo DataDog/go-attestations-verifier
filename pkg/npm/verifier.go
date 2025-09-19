@@ -82,15 +82,15 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 		return nil, fmt.Errorf("inferring certificate id: %w", err)
 	}
 
+	digest, err := base64.StdEncoding.DecodeString(encodedDigest)
+	if err != nil {
+		return nil, fmt.Errorf("decoding base64 encoded package's version sha512: %w", err)
+	}
+
 	status := &VerificationStatus{
 		URL:            pkg.Dist.Tarball,
 		SHA512:         encodedDigest,
 		InferredIssuer: httputil.IssuerByHost[source.Host],
-	}
-
-	digest, err := base64.StdEncoding.DecodeString(encodedDigest)
-	if err != nil {
-		return nil, fmt.Errorf("decoding base64 encoded package's version sha512: %w", err)
 	}
 
 	attestations, err := v.NPM.GetAttestations(ctx, pkg.Name, pkg.Version)
@@ -111,7 +111,13 @@ func (v *Verifier) Verify(ctx context.Context, pkg *PackageVersion) (*Verificati
 		}
 
 		if attestation.PredicateType == "https://slsa.dev/provenance/v1" {
-			status.Provenance, status.ProvenanceError = v.verifyProvenance(attestation.Bundle, digest, certID)
+			status.Provenance, status.ProvenanceError = v.SigStore.Verify(
+				attestation.Bundle,
+				verify.NewPolicy(
+					verify.WithArtifactDigest("sha512", digest),
+					certID,
+				),
+			)
 		}
 	}
 
@@ -145,25 +151,6 @@ func (v *Verifier) verifyAttestation(bundle *bundle.Bundle, digest []byte) (*ver
 	}
 
 	return nil, ErrNoPublicKeysVerifiers
-}
-
-func (v *Verifier) verifyProvenance(
-	bundle *bundle.Bundle,
-	digest []byte,
-	certID verify.PolicyOption,
-) (*verify.VerificationResult, error) {
-	result, err := v.SigStore.Verify(
-		bundle,
-		verify.NewPolicy(
-			verify.WithArtifactDigest("sha512", digest),
-			certID,
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("verifying a bundle: %w", err)
-	}
-
-	return result, nil
 }
 
 func NewNPMPublicKeyVerifiers(
