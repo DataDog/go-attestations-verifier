@@ -6,15 +6,8 @@ import (
 	"fmt"
 
 	"github.com/DataDog/go-attestations-verifier/internal/httputil"
-	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
-	rekorbpb "github.com/sigstore/protobuf-specs/gen/pb-go/rekor/v1"
+	"github.com/DataDog/go-attestations-verifier/pkg/rekor"
 	"github.com/sigstore/rekor/pkg/client"
-	rekorClient "github.com/sigstore/rekor/pkg/generated/client"
-	"github.com/sigstore/rekor/pkg/generated/client/entries"
-	"github.com/sigstore/rekor/pkg/generated/client/index"
-	"github.com/sigstore/rekor/pkg/generated/models"
-	"github.com/sigstore/rekor/pkg/tle"
-	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
@@ -23,7 +16,7 @@ import (
 type Verifier struct {
 	RubyGems *Client
 	SigStore *verify.Verifier
-	Rekor    *rekorClient.Rekor
+	Rekor    *rekor.Client
 }
 
 func NewVerifier(rubygems *Client) (*Verifier, error) {
@@ -34,7 +27,7 @@ func NewVerifier(rubygems *Client) (*Verifier, error) {
 		return nil, fmt.Errorf("fetching TUF trusted root: %w", err)
 	}
 
-	rekor, err := client.GetRekorClient("https://rekor.sigstore.dev")
+	rekorClient, err := client.GetRekorClient("https://rekor.sigstore.dev")
 	if err != nil {
 		return nil, fmt.Errorf("creating rekor client: %w", err)
 	}
@@ -51,7 +44,7 @@ func NewVerifier(rubygems *Client) (*Verifier, error) {
 	return &Verifier{
 		RubyGems: rubygems,
 		SigStore: sigstore,
-		Rekor:    rekor,
+		Rekor:    &rekor.Client{Rekor: rekorClient},
 	}, nil
 }
 
@@ -86,7 +79,7 @@ func (v *Verifier) Verify(ctx context.Context, gem *GemVersion) (*VerificationSt
 		InferredIssuer: httputil.IssuerByHost[source.Host],
 	}
 
-	bundle, err := v.getBundle(ctx, digest)
+	bundle, err := v.Rekor.GetBundle(ctx, digest)
 	if err != nil {
 		return nil, fmt.Errorf("getting bundle: %w", err)
 	}
@@ -102,49 +95,4 @@ func (v *Verifier) Verify(ctx context.Context, gem *GemVersion) (*VerificationSt
 	)
 
 	return status, nil
-}
-
-func (v *Verifier) getBundle(ctx context.Context, digest []byte) (*bundle.Bundle, error) {
-	hash := "sha256:" + hex.EncodeToString(digest)
-
-	indexSearchQuery := index.NewSearchIndexParamsWithContext(ctx)
-	indexSearchQuery.SetQuery(&models.SearchIndex{Hash: hash})
-
-	searchResponse, err := v.Rekor.Index.SearchIndex(indexSearchQuery)
-	if err != nil {
-		return nil, fmt.Errorf(": %w", err)
-	}
-
-	uuids := searchResponse.GetPayload()
-	if len(uuids) == 0 {
-		return nil, ErrNoRekorLogEntry
-	}
-
-	entryGetRequest := entries.NewGetLogEntryByUUIDParamsWithContext(ctx)
-	entryGetRequest.SetEntryUUID(uuids[0])
-
-	resp, err := v.Rekor.Entries.GetLogEntryByUUID(entryGetRequest)
-	if err != nil {
-		return nil, fmt.Errorf(": %w", err)
-	}
-
-	var anon models.LogEntryAnon
-	for _, v := range resp.Payload {
-		anon = v
-		break
-	}
-
-	tle, err := tle.GenerateTransparencyLogEntry(anon)
-	if err != nil {
-		return nil, err
-	}
-
-	pb := &protobundle.Bundle{
-		MediaType: "application/vnd.dev.sigstore.bundle.v0.3+json",
-		VerificationMaterial: &protobundle.VerificationMaterial{
-			TlogEntries: []*rekorbpb.TransparencyLogEntry{tle},
-		},
-	}
-
-	return bundle.NewBundle(pb)
 }
