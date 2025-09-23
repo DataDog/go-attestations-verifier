@@ -10,6 +10,8 @@ go run ./cmd npm --name sigstore --version 3.0.0 # Signed NPM package
 go run ./cmd npm --name @testing-library/jest-dom --version 6.6.3 # Unsigned NPM package
 go run ./cmd pypi --name sampleproject --version 4.0.0 # Signed PyPI package
 go run ./cmd pypi --name sigstore --version 3.0.0 # Unsigned PyPI package
+go run ./cmd rubygems --name sigstore --version 0.2.1 # Signed RubyGem
+go run ./cmd rubygems --name bundler --version 2.7.2 # Unsigned RubyGem
 ```
 
 Two packages are provided for programmatic usage: [./pkg/npm](./pkg/npm) and [./pkg/pypi](./pkg/pypi).
@@ -44,6 +46,14 @@ They released a new API endpoint documented at https://docs.pypi.org/api/integri
 The recommended attestation publishing process involves using the GitHub action https://github.com/pypa/gh-action-pypi-publish.
 
 Most project versions releases contain two files (a `.whl` and a `.tar`). `pypi.Verifier` verifies all files for a given version. It infers the certificate issuer and Subject Alternative Name (SAN) from the project metadata source URL.
+
+### RubyGems specificities
+
+In https://blog.rubygems.org/2023/12/14/trusted-publishing.html, RubyGems announced support for sigstore attestations.
+
+The recommended attestation publishing process involves using the GitHub action https://github.com/rubygems/release-gem.
+
+A Gem version is mapped to a single file. Attestations are retrieved from [rekor](https://docs.sigstore.dev/logging/overview/) for this file's sha 256.
 
 ## Development
 

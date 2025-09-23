@@ -11,6 +11,7 @@ func rootCmd() *cobra.Command {
 		versionCmd(),
 		npmCmd(),
 		pypiCmd(),
+		rubygemsCmd(),
 	)
 
 	return cmd
