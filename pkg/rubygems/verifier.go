@@ -3,6 +3,7 @@ package rubygems
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/DataDog/go-attestations-verifier/internal/httputil"
@@ -63,6 +64,13 @@ func (v *Verifier) Verify(ctx context.Context, gem *GemVersion) (*VerificationSt
 		return nil, fmt.Errorf("parsing source url: %w", err)
 	}
 
+	if gem.SourceCodeURI == "" {
+		source, err = httputil.ParseSourceURL(gem.HomepageURI)
+		if err != nil {
+			return nil, fmt.Errorf("parsing project url: %w", err)
+		}
+	}
+
 	certID, err := httputil.GetCertID(source)
 	if err != nil {
 		return nil, fmt.Errorf("inferring certificate id: %w", err)
@@ -81,6 +89,10 @@ func (v *Verifier) Verify(ctx context.Context, gem *GemVersion) (*VerificationSt
 
 	bundle, err := v.Rekor.GetBundle(ctx, digest)
 	if err != nil {
+		if errors.Is(err, rekor.ErrNoRekorLogEntry) {
+			return status, nil
+		}
+
 		return nil, fmt.Errorf("getting bundle: %w", err)
 	}
 

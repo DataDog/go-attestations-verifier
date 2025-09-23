@@ -36,6 +36,12 @@ func rubygemsCmd() *cobra.Command {
 
 			fmt.Fprintf(os.Stdout, "⏳ Verifying file %s (SHA256: %s)\n", status.URL, status.SHA256)
 
+			if !status.HasAttestation {
+				fmt.Fprintln(os.Stdout, "❌ No attestations found")
+
+				return nil
+			}
+
 			if status.InferredIssuer == "" {
 				fmt.Fprintln(os.Stdout, "❌ Could not infer a certificate issuer. Dangerously defaulting to skip identity checks.")
 			} else {

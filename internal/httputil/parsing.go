@@ -18,6 +18,13 @@ func ParseSourceURL(rawURL string) (*url.URL, error) {
 	url.Path = strings.TrimSuffix(url.Path, ".git")
 	url.Path = strings.TrimSuffix(url.Path, "/")
 
+	pathParts := strings.Split(strings.Trim(url.Path, "/"), "/")
+	if len(pathParts) > 2 {
+		pathParts = pathParts[:2]
+	}
+
+	url.Path = "/" + strings.Join(pathParts, "/")
+
 	return url, nil
 }
 
