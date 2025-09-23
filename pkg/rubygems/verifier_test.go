@@ -8,6 +8,7 @@ import (
 	"github.com/DataDog/go-attestations-verifier/pkg/rubygems"
 )
 
+//nolint:testableexamples
 func ExampleVerifier_Verify() {
 	ctx := context.Background()
 

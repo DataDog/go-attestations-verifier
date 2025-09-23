@@ -19,7 +19,7 @@ func ParseSourceURL(rawURL string) (*url.URL, error) {
 	url.Path = strings.TrimSuffix(url.Path, "/")
 
 	pathParts := strings.Split(strings.Trim(url.Path, "/"), "/")
-	if len(pathParts) > 2 {
+	if len(pathParts) > 2 { //nolint:mnd
 		pathParts = pathParts[:2]
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//nolint:funlen
 func rubygemsCmd() *cobra.Command {
 	var name, version string
 
