@@ -1,6 +1,6 @@
 # go-attestations-verifier
 
-A Golang library to verify [NPM](https://www.npmjs.com/) and [PyPI](https://pypi.org/) [sigstore](https://www.sigstore.dev/) attestations.
+A Golang library to verify [NPM](https://www.npmjs.com/), [PyPI](https://pypi.org/) and [RubyGems](https://rubygems.org/) [sigstore](https://www.sigstore.dev/) attestations.
 
 ## Getting started
 
@@ -14,14 +14,14 @@ go run ./cmd rubygems --name sigstore --version 0.2.1 # Signed RubyGem
 go run ./cmd rubygems --name bundler --version 2.7.2 # Unsigned RubyGem
 ```
 
-Two packages are provided for programmatic usage: [./pkg/npm](./pkg/npm) and [./pkg/pypi](./pkg/pypi).
+Two packages are provided for programmatic usage: [./pkg/npm](./pkg/npm), [./pkg/pypi](./pkg/pypi) and [./pkg/rubygems](./pkg/rubygems).
 Each one defines a `Client` exposing methods to interact with both registries over HTTP.
 
 > Both `Client` structs are simply wrappers around `*http.Client` meaning they are safe to use concurrently.
 
 Each package also defines a `Verifier` exposing a `Verify` method to check attestations for a given package.
 
-Check out [./pkg/npm/verifier_test.go](./pkg/npm/verifier_test.go) and [./pkg/pypi/verifier_test.go](./pkg/pypi/verifier_test.go) to see some basic examples of both `Verifier`s usage.
+Check out [./pkg/npm/verifier_test.go](./pkg/npm/verifier_test.go), [./pkg/pypi/verifier_test.go](./pkg/pypi/verifier_test.go) and [./pkg/rubygems/verifier_test.go](./pkg/rubygems/verifier_test.go) to see some basic examples of each `Verifier`s usage.
 
 ### NPM specificities
 
