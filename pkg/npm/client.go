@@ -113,7 +113,7 @@ type Repository struct {
 
 // The `Repository` field in `PackageVersion` can have multiple types.
 func (r *Repository) UnmarshalJSON(data []byte) error {
-	var rawRepository interface{}
+	var rawRepository any
 
 	err := json.Unmarshal(data, &rawRepository)
 	if err != nil {
@@ -132,15 +132,15 @@ func (r *Repository) UnmarshalJSON(data []byte) error {
 
 	// Observed for instance in https://registry.npmjs.org/postcss-normalize-charset.
 	// This seems to be the usual field type.
-	if repository, ok := rawRepository.(map[string]interface{}); ok {
+	if repository, ok := rawRepository.(map[string]any); ok {
 		r.URL = repository["url"].(string)   //nolint:forcetypeassert
 		r.Type = repository["type"].(string) //nolint:forcetypeassert
 	}
 
 	// Observed for instance in https://registry.npmjs.org/tmp
-	if repositories, ok := rawRepository.([]interface{}); ok {
+	if repositories, ok := rawRepository.([]any); ok {
 		if len(repositories) > 0 {
-			if repository, ok := repositories[0].(map[string]interface{}); ok {
+			if repository, ok := repositories[0].(map[string]any); ok {
 				r.URL = repository["url"].(string)   //nolint:forcetypeassert
 				r.Type = repository["type"].(string) //nolint:forcetypeassert
 			}

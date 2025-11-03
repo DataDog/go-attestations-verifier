@@ -71,7 +71,7 @@ func Get(ctx context.Context, url url.URL, options ...Option) ([]byte, error) {
 	return body, nil
 }
 
-func GetJSON(ctx context.Context, url url.URL, out interface{}, options ...Option) error {
+func GetJSON(ctx context.Context, url url.URL, out any, options ...Option) error {
 	data, err := Get(ctx, url, options...)
 	if err != nil {
 		return err
