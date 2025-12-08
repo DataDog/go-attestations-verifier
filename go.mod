@@ -7,7 +7,7 @@ require (
 	github.com/sigstore/rekor v1.4.3
 	github.com/sigstore/sigstore v1.10.0
 	github.com/sigstore/sigstore-go v1.1.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	google.golang.org/protobuf v1.36.10
 )
 
