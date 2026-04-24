@@ -2,6 +2,8 @@ module github.com/DataDog/go-attestations-verifier
 
 go 1.25.0
 
+toolchain go1.26.2
+
 require (
 	github.com/sigstore/protobuf-specs v0.5.1
 	github.com/sigstore/rekor v1.5.1
