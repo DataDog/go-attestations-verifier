@@ -7,7 +7,7 @@ toolchain go1.26.2
 require (
 	github.com/sigstore/protobuf-specs v0.5.1
 	github.com/sigstore/rekor v1.5.2
-	github.com/sigstore/sigstore v1.10.6
+	github.com/sigstore/sigstore v1.10.8
 	github.com/sigstore/sigstore-go v1.1.4
 	github.com/spf13/cobra v1.10.2
 	google.golang.org/protobuf v1.36.11
@@ -66,6 +66,7 @@ require (
 	github.com/theupdateframework/go-tuf/v2 v2.3.0 // indirect
 	github.com/transparency-dev/formats v0.0.0-20251017110053-404c0d5b696c // indirect
 	github.com/transparency-dev/merkle v0.0.2 // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
