@@ -1,6 +1,6 @@
 module github.com/DataDog/go-attestations-verifier
 
-go 1.25.0
+go 1.25.5
 
 toolchain go1.26.2
 
