@@ -3,6 +3,7 @@ linters:
   default: all
   disable:
     - exhaustruct # Noisy
+    - exhaustruct_v5
     - tagliatelle # Triggers on JSON struct tags we don't control (NPM or PyPI specific)
     - wsl # Deprecated
     - godoclint

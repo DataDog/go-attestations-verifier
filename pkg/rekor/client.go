@@ -27,10 +27,11 @@ type Client struct {
 func (c *Client) GetBundle(ctx context.Context, digest []byte) (*bundle.Bundle, error) {
 	hash := "sha256:" + hex.EncodeToString(digest)
 
-	indexSearchQuery := index.NewSearchIndexParamsWithContext(ctx)
-	indexSearchQuery.SetQuery(&models.SearchIndex{Hash: hash})
+	indexSearchQuery := &index.SearchIndexParams{
+		Query: &models.SearchIndex{Hash: hash},
+	}
 
-	searchResponse, err := c.Rekor.Index.SearchIndex(indexSearchQuery)
+	searchResponse, err := c.Rekor.Index.SearchIndexContext(ctx, indexSearchQuery)
 	if err != nil {
 		return nil, fmt.Errorf("searching rekor index: %w", err)
 	}
@@ -40,10 +41,9 @@ func (c *Client) GetBundle(ctx context.Context, digest []byte) (*bundle.Bundle, 
 		return nil, ErrNoRekorLogEntry
 	}
 
-	entryGetRequest := entries.NewGetLogEntryByUUIDParamsWithContext(ctx)
-	entryGetRequest.SetEntryUUID(uuids[0])
+	entryGetRequest := &entries.GetLogEntryByUUIDParams{EntryUUID: uuids[0]}
 
-	resp, err := c.Rekor.Entries.GetLogEntryByUUID(entryGetRequest)
+	resp, err := c.Rekor.Entries.GetLogEntryByUUIDContext(ctx, entryGetRequest)
 	if err != nil {
 		return nil, fmt.Errorf("getting rekor log entry by uuid: %w", err)
 	}
