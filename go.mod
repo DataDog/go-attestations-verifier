@@ -5,6 +5,7 @@ go 1.26.0
 toolchain go1.26.2
 
 require (
+	github.com/go-openapi/runtime v0.33.0
 	github.com/sigstore/protobuf-specs v0.5.2
 	github.com/sigstore/rekor v1.5.4
 	github.com/sigstore/sigstore v1.10.9
@@ -27,7 +28,6 @@ require (
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/loads v0.25.1 // indirect
-	github.com/go-openapi/runtime v0.33.0 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.30.0 // indirect
 	github.com/go-openapi/spec v0.22.9 // indirect
 	github.com/go-openapi/strfmt v0.27.0 // indirect
